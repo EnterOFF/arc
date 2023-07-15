@@ -7,6 +7,7 @@ TMP_PATH="/tmp"
 UNTAR_PAT_PATH="${CACHE_PATH}/dsm"
 RAMDISK_PATH="${TMP_PATH}/ramdisk"
 LOG_FILE="${TMP_PATH}/log.txt"
+BOOT_LOG="${CACHE_PATH}/log.txt"
 
 BACKUPDIR="${CACHE_PATH}/backup"
 
