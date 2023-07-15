@@ -33,6 +33,9 @@ mount ${LOADER_DISK}1 ${BOOTLOADER_PATH} || die "`printf "Can't mount %s" "${BOO
 mount ${LOADER_DISK}2 ${SLPART_PATH}     || die "`printf "Can't mount %s" "${SLPART_PATH}"`"
 mount ${LOADER_DISK}3 ${CACHE_PATH}      || die "`printf "Can't mount %s" "${CACHE_PATH}"`"
 
+touch "${BOOT_LOG}"
+echo "INIT/1">>"${BOOT_LOG}"
+
 # Shows title
 clear
 TITLE="${ARPL_TITLE}"
@@ -62,10 +65,10 @@ if [ -d "${CACHE_PATH}/patch" ]; then
   rm -rf "${PATCH_PATH}"
   ln -s "${CACHE_PATH}/patch" "${PATCH_PATH}"
 fi
-
+echo "INIT/2">>"${BOOT_LOG}"
 # Check if machine has EFI
 [ -d /sys/firmware/efi ] && EFI=1 || EFI=0
-
+echo "INIT/3">>"${BOOT_LOG}"
 # If user config file not exists, initialize it
 if [ ! -f "${USER_CONFIG_FILE}" ]; then
   touch "${USER_CONFIG_FILE}"
@@ -94,7 +97,7 @@ if [ ! -f "${USER_CONFIG_FILE}" ]; then
   writeConfigKey "arc.bootipwait" "20" "${USER_CONFIG_FILE}"
   writeConfigKey "device" "{}" "${USER_CONFIG_FILE}"
 fi
-
+echo "INIT/4">>"${BOOT_LOG}"
 # Get MAC address
 ETHX=($(ls /sys/class/net/ | grep eth))  # real network cards list
 for N in $(seq 1 ${#ETHX[@]}); do
@@ -113,10 +116,10 @@ for N in $(seq 1 ${#ETHX[@]}); do
   # Enable Wake on Lan, ignore errors
   ethtool -s ${ETHX[$(expr ${N} - 1)]} wol g 2>/dev/null
 done
-
+echo "INIT/5">>"${BOOT_LOG}"
 # Restart DHCP
 /etc/init.d/S41dhcpcd restart >/dev/null 2>&1 || true
-
+echo "INIT/6">>"${BOOT_LOG}"
 # Get the VID/PID if we are in USB
 VID="0x0000"
 PID="0x0000"
@@ -127,11 +130,11 @@ if [ "${BUS}" = "usb" ]; then
 elif [ "${BUS}" != "ata" ]; then
   die "Loader disk neither USB or DoM"
 fi
-
+echo "INIT/7">>"${BOOT_LOG}"
 # Save variables to user config file
 writeConfigKey "vid" ${VID} "${USER_CONFIG_FILE}"
 writeConfigKey "pid" ${PID} "${USER_CONFIG_FILE}"
-
+echo "INIT/8">>"${BOOT_LOG}"
 # Inform user
 echo -en "Loader disk: \033[1;34m${LOADER_DISK}\033[0m ("
 if [ "${BUS}" = "usb" ]; then
@@ -140,7 +143,7 @@ elif [ "${BUS}" = "ata" ]; then
   echo -en "\033[1;34mSATA DoM\033[0m"
 fi
 echo ")"
-
+echo "INIT/9">>"${BOOT_LOG}"
 # Check if partition 3 occupies all free space, resize if needed
 LOADER_DEVICE_NAME=$(echo ${LOADER_DISK} | sed 's|/dev/||')
 SIZEOFDISK=$(cat /sys/block/${LOADER_DEVICE_NAME}/size)
@@ -150,17 +153,17 @@ if [ ${SIZEOFDISK} -ne ${ENDSECTOR} ]; then
   echo -e "d\n\nn\n\n\n\n\nn\nw" | fdisk "${LOADER_DISK}" >"${LOG_FILE}" 2>&1 || dieLog
   resize2fs ${LOADER_DISK}3 >"${LOG_FILE}" 2>&1 || dieLog
 fi
-
+echo "INIT/10">>"${BOOT_LOG}"
 # Load keymap name
 LAYOUT="$(readConfigKey "layout" "${USER_CONFIG_FILE}")"
 KEYMAP="$(readConfigKey "keymap" "${USER_CONFIG_FILE}")"
-
+echo "INIT/11">>"${BOOT_LOG}"
 # Loads a keymap if is valid
 if [ -f /usr/share/keymaps/i386/${LAYOUT}/${KEYMAP}.map.gz ]; then
   echo -e "Loading keymap \033[1;34m${LAYOUT}/${KEYMAP}\033[0m"
   zcat /usr/share/keymaps/i386/${LAYOUT}/${KEYMAP}.map.gz | loadkeys
 fi
-
+echo "INIT/12">>"${BOOT_LOG}"
 # Decide if boot automatically
 BOOT=1
 if ! loaderIsConfigured; then
@@ -170,12 +173,12 @@ elif grep -q "IWANTTOCHANGETHECONFIG" /proc/cmdline; then
   echo -e "\033[1;31mUser requested edit settings.\033[0m"
   BOOT=0
 fi
-
+echo "INIT/13">>"${BOOT_LOG}"
 # If is to boot automatically, do it
 if [ ${BOOT} -eq 1 ]; then 
   boot.sh && exit 0
 fi
-
+echo "INIT/14">>"${BOOT_LOG}"
 # Wait for an IP
 BOOTIPWAIT="$(readConfigKey "arc.bootipwait" "${USER_CONFIG_FILE}")"
 [ -z "${BOOTIPWAIT}" ] && BOOTIPWAIT=20
@@ -231,7 +234,7 @@ for N in $(seq 0 $(expr ${#ETHX[@]} - 1)); do
     sleep 1
   done
 done
-
+echo "INIT/15">>"${BOOT_LOG}"
 # Inform user
 echo
 echo -e "Call \033[1;34marc.sh\033[0m to configure loader"
@@ -239,17 +242,17 @@ echo
 echo -e "User config is on \033[1;34m${USER_CONFIG_FILE}\033[0m"
 echo -e "Default SSH Root password is \033[1;34marc\033[0m"
 echo
-
+echo "INIT/16">>"${BOOT_LOG}"
 # Check memory
 RAM=$(free -m | awk '/Mem:/{print$2}')
 if [ ${RAM} -le 3500 ]; then
   echo -e "\033[1;31mYou have less than 4GB of RAM, if errors occur in loader creation, please increase the amount of memory.\033[0m\n"
 fi
-
+echo "INIT/17">>"${BOOT_LOG}"
 mkdir -p "${ADDONS_PATH}"
 mkdir -p "${LKM_PATH}"
 mkdir -p "${MODULES_PATH}"
-
+echo "INIT/18">>"${BOOT_LOG}"
 install-addons.sh
 sleep 3
 arc.sh

@@ -6,13 +6,13 @@ set -e
 
 # Check if machine has EFI
 [ -d /sys/firmware/efi ] && EFI=1 || EFI=0
-
+echo "BOOT/1">>"${BOOT_LOG}"
 LOADER_DISK="$(blkid | grep 'LABEL="ARPL3"' | cut -d3 -f1)"
 BUS=$(udevadm info --query property --name ${LOADER_DISK} | grep ID_BUS | cut -d= -f2)
-
+echo "BOOT/2">>"${BOOT_LOG}"
 # Sanity check
 loaderIsConfigured || die "Loader is not configured!"
-
+echo "BOOT/3">>"${BOOT_LOG}"
 # Print text centralized
 clear
 [ -z "${COLUMNS}" ] && COLUMNS=50
@@ -29,7 +29,7 @@ elif [ "${BUS}" = "ata" ]; then
   TITLE+=" [SATA DoM]"
 fi
 printf "\033[1;34m%*s\033[0m\n" $(((${#TITLE}+${COLUMNS})/2)) "${TITLE}"
-
+echo "BOOT/4">>"${BOOT_LOG}"
 # Check if DSM ramdisk changed, patch it if necessary
 RAMDISK_HASH="$(readConfigKey "ramdisk-hash" "${USER_CONFIG_FILE}")"
 if [ "$(sha256sum "${ORI_RDGZ_FILE}" | awk '{print$1}')" != "${RAMDISK_HASH}" ]; then
@@ -42,7 +42,7 @@ if [ "$(sha256sum "${ORI_RDGZ_FILE}" | awk '{print$1}')" != "${RAMDISK_HASH}" ];
   fi
   echo
 fi
-
+echo "BOOT/5">>"${BOOT_LOG}"
 # Check if DSM zImage changed, patch it if necessary
 ZIMAGE_HASH="$(readConfigKey "zimage-hash" "${USER_CONFIG_FILE}")"
 if [ "$(sha256sum "${ORI_ZIMAGE_FILE}" | awk '{print$1}')" != "${ZIMAGE_HASH}" ]; then
@@ -55,7 +55,7 @@ if [ "$(sha256sum "${ORI_ZIMAGE_FILE}" | awk '{print$1}')" != "${ZIMAGE_HASH}" ]
   fi
   echo
 fi
-
+echo "BOOT/6">>"${BOOT_LOG}"
 # Load necessary variables
 VID="$(readConfigKey "vid" "${USER_CONFIG_FILE}")"
 PID="$(readConfigKey "pid" "${USER_CONFIG_FILE}")"
@@ -65,19 +65,19 @@ SN="$(readConfigKey "sn" "${USER_CONFIG_FILE}")"
 LKM="$(readConfigKey "lkm" "${USER_CONFIG_FILE}")"
 CPU="$(echo $(cat /proc/cpuinfo | grep 'model name' | uniq | awk -F':' '{print $2}'))"
 MEM="$(free -m | grep -i mem | awk '{print$2}') MB"
-
+echo "BOOT/7">>"${BOOT_LOG}"
 echo -e "Model: \033[1;37m${MODEL}\033[0m"
 echo -e "DSM: \033[1;37m${PRODUCTVER}\033[0m"
 echo -e "LKM: \033[1;36m${LKM}\033[0m"
 echo -e "CPU: \033[1;36m${CPU}\033[0m"
 echo -e "MEM: \033[1;36m${MEM}\033[0m"
 echo
-
+echo "BOOT/7">>"${BOOT_LOG}"
 if [ ! -f "${MODEL_CONFIG_PATH}/${MODEL}.yml" ] || [ -z "$(readConfigKey "productvers.[${PRODUCTVER}]" "${MODEL_CONFIG_PATH}/${MODEL}.yml")" ]; then
   echo -e "\033[1;33m*** $(printf "The current version of Arc does not support booting %s-%s, please rebuild." "${MODEL}" "${PRODUCTVER}") ***\033[0m"
   exit 1
 fi
-
+echo "BOOT/8">>"${BOOT_LOG}"
 declare -A CMDLINE
 
 # Fixed values
@@ -89,7 +89,7 @@ CMDLINE['syno_hw_version']="${MODEL}"
 CMDLINE['vid']="${VID}"
 CMDLINE['pid']="${PID}"
 CMDLINE['sn']="${SN}"
-
+echo "BOOT/9">>"${BOOT_LOG}"
 # Read cmdline
 while IFS=': ' read KEY VALUE; do
   [ -n "${KEY}" ] && CMDLINE["${KEY}"]="${VALUE}"
@@ -97,7 +97,7 @@ done < <(readModelMap "${MODEL}" "productvers.[${PRODUCTVER}].cmdline")
 while IFS=': ' read KEY VALUE; do
   [ -n "${KEY}" ] && CMDLINE["${KEY}"]="${VALUE}"
 done < <(readConfigMap "cmdline" "${USER_CONFIG_FILE}")
-
+echo "BOOT/10">>"${BOOT_LOG}"
 # Read KVER from Model Config
 KVER=$(readModelKey "${MODEL}" "productvers.[${PRODUCTVER}].kver")
 
@@ -107,7 +107,7 @@ if [ "${BUS}" = "ata" ]; then
   # Read SATADoM type
   DOM="$(readModelKey "${MODEL}" "dom")"
 fi
-
+echo "BOOT/11">>"${BOOT_LOG}"
 # Validate netif_num
 MACS=()
 for N in $(seq 1 8); do  # Currently, only up to 8 are supported.
@@ -134,7 +134,7 @@ if [ ${NETIF_NUM} -le ${NETNUM} ]; then
   done
   CMDLINE["netif_num"]=${NETNUM}
 fi
-
+echo "BOOT/12">>"${BOOT_LOG}"
 # Prepare command line
 CMDLINE_LINE=""
 grep -q "force_junior" /proc/cmdline && CMDLINE_LINE+="force_junior "
@@ -154,7 +154,7 @@ done
 CMDLINE_DIRECT=$(echo ${CMDLINE_DIRECT} | sed 's/>/\\\\>/g')
 echo -e "Cmdline:\n\033[1;37m${CMDLINE_LINE}\033[0m"
 echo
-
+echo "BOOT/13">>"${BOOT_LOG}"
 DIRECTBOOT="$(readConfigKey "arc.directboot" "${USER_CONFIG_FILE}")"
 DIRECTDSM="$(readConfigKey "arc.directdsm" "${USER_CONFIG_FILE}")"
 # Make Directboot persistent if DSM is installed
@@ -229,7 +229,7 @@ elif [ "${DIRECTBOOT}" = "false" ]; then
     done
   done
 fi
-
+echo "BOOT/14">>"${BOOT_LOG}"
 echo
 echo -e "\033[1;37mLoading DSM kernel...\033[0m"
 
@@ -241,5 +241,6 @@ do
   echo -e "\n\033[1;37mThis interface will not be operational. Please use \033[1;34mhttp://find.synology.com/ \033[1;37mto find DSM and connect.\033[0m\n" >"/dev/${T}" 2>/dev/null || true
 done 
 #poweroff
+echo "BOOT/15">>"${BOOT_LOG}"
 kexec -f -e
 exit 0
